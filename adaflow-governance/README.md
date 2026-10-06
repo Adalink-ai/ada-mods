@@ -20,9 +20,22 @@ Responda `y` em `Add marketplace?` (se for a primeira vez), escolha o escopo (*u
 /adaflow login
 ```
 
-1. O mod pede um código ao gateway e mostra o **código** e o **link** da página de aprovação (no macOS o navegador abre sozinho). Enquanto espera, uma faixa acima do prompt mostra o código, o link clicável e um botão **Cancelar**.
+1. O mod pede um código à plataforma e mostra o **código** e o **link** da página de aprovação (no macOS o navegador abre sozinho). Enquanto espera, uma faixa acima do prompt mostra o código, o link clicável e um botão **Cancelar**.
 2. No navegador, já logado na plataforma, confira se o código é **o mesmo do seu terminal**, veja a organização e o escopo pedido ("Registrar atividade de desenvolvimento na auditoria") e clique em **Autorizar**.
 3. O terminal fica livre durante a espera. Quando você aprova, aparece o aviso `Adaflow: conectado (<organização>)`.
+
+### Qual endereço usar
+
+Use o **mesmo endereço que você abre no navegador para entrar no Adaflow**. O login, a renovação do token e a auditoria usam só esse endereço:
+
+| Seu Adaflow | Comando |
+|---|---|
+| SaaS (padrão) | `/adaflow login` |
+| Private label, por exemplo `cora.amcor.com` | `/adaflow login cora.amcor.com` |
+
+Isso importa porque a sessão do navegador é **por domínio**: quem entra pelo domínio do cliente só está logado nele, e a página de aprovação precisa abrir ali. O mod monta o link de aprovação a partir do endereço que **você** informou e ignora o host que o servidor devolver.
+
+Para não digitar toda vez, fixe o endereço na configuração (`baseUrl`, abaixo). Times de TI podem distribuir esse valor pelas configurações gerenciadas (`pluginConfigs`).
 
 A sessão vale por no máximo **7 dias** desde o login (teto absoluto, sem renovação). Depois disso o mod avisa e pede um novo `/adaflow login`.
 
@@ -30,7 +43,7 @@ A sessão vale por no máximo **7 dias** desde o login (teto absoluto, sem renov
 
 | Comando | O que faz |
 |---|---|
-| `/adaflow login` | Login por device flow (código + aprovação no navegador) |
+| `/adaflow login [endereço]` | Login por device flow (código + aprovação no navegador). O endereço é opcional e vale para este login; sem ele, usa o `baseUrl` |
 | `/adaflow logout` | Encerra a sessão no servidor (`/sign-out`) e apaga o token e a fila local |
 | `/adaflow status` | Organização, validade restante até o teto de 7 dias, último envio, fila pendente e último erro |
 
@@ -38,7 +51,7 @@ A sessão vale por no máximo **7 dias** desde o login (teto absoluto, sem renov
 
 | Campo | Padrão | Efeito |
 |---|---|---|
-| `baseUrl` | `https://adalink-api-gateway.onrender.com` | Gateway da plataforma (https; http só para `localhost`) |
+| `baseUrl` | `https://adaflow.adalink.ai` | Endereço da sua plataforma, o que você abre no navegador (SaaS ou o domínio do cliente private label). https; http só para `localhost` |
 | `enabled` | `true` | Desligado, o mod não coleta nem envia eventos |
 
 ## O que é enviado
@@ -64,7 +77,7 @@ Os metadados passam por uma lista do que é aceito (números, booleanos, textos 
 ## Falhas
 
 - **Sem login**: o mod não coleta nada e não faz requisição nenhuma.
-- **Rede fora / gateway instável (5xx, 429)**: os eventos ficam numa fila local (até 500) e o envio tenta de novo com espera crescente (5 s até 5 min). Nada disso bloqueia o seu trabalho.
+- **Rede fora / plataforma instável (5xx, 429)**: os eventos ficam numa fila local (até 500) e o envio tenta de novo com espera crescente (5 s até 5 min). Nada disso bloqueia o seu trabalho.
 - **Lote recusado por validação (400/403/404)**: o lote é descartado, porque reenviar não muda o resultado; `/adaflow status` mostra o último erro.
 - **Sessão revogada ou vencida (401 ao renovar o JWT)**: o mod apaga o token local e avisa para rodar `/adaflow login`.
 

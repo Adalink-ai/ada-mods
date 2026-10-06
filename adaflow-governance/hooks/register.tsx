@@ -5,7 +5,7 @@ import { FLUSH_EVERY_MS, Governance, guardRuleIds } from './governance'
 
 const login = atom({ plugin: 'adaflow-governance', key: 'login' } as const, null)
 
-const USAGE = 'Uso: `/adaflow login` | `/adaflow logout` | `/adaflow status`'
+const USAGE = 'Uso: `/adaflow login [endereco]` | `/adaflow logout` | `/adaflow status`'
 
 export const register: Register = (on, options) => {
   const cfg = { baseUrl: String(options.baseUrl ?? ''), enabled: options.enabled !== false }
@@ -40,7 +40,7 @@ export const register: Register = (on, options) => {
     await $.command.register({
       name: 'adaflow',
       description: 'Adaflow: login, logout e status da trilha de auditoria',
-      argumentHint: 'login | logout | status',
+      argumentHint: 'login [endereco] | logout | status',
     })
     const version = await $.session.version().catch(() => null)
     await gov.record('session.start', {
@@ -57,8 +57,9 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'adaflow' }, async ($, e) => {
     if (!gov) return { text: 'adaflow-governance ainda nao terminou de carregar; tente de novo.' }
-    const sub = e.args.trim().split(/\s+/)[0]?.toLowerCase() ?? ''
-    if (sub === 'login') return { text: await gov.login() }
+    const [first, second] = e.args.trim().split(/\s+/)
+    const sub = first?.toLowerCase() ?? ''
+    if (sub === 'login') return { text: await gov.login(second) }
     if (sub === 'logout') return { text: await gov.logout() }
     if (sub === 'status' || sub === '') {
       void gov.flush()

@@ -7,9 +7,9 @@
   "userConfig": {
     "baseUrl": {
       "type": "string",
-      "title": "URL do gateway",
-      "description": "Gateway da plataforma Adalink (https; http so para localhost)",
-      "default": "https://adalink-api-gateway.onrender.com"
+      "title": "Endereco da plataforma",
+      "description": "O endereco que voce abre no navegador para entrar no Adaflow: login, token e auditoria usam esse mesmo endereco. SaaS: https://adaflow.adalink.ai. Private label: o dominio do seu cliente (ex.: https://cora.amcor.com). https; http so para localhost",
+      "default": "https://adaflow.adalink.ai"
     },
     "enabled": {
       "type": "boolean",

@@ -4,7 +4,7 @@ import type { On } from 'claude-code'
 import { BATCH_MAX, METADATA_MAX_BYTES, SESSION_CAP_MS, guardRuleIds, safeMetadata } from '../hooks/governance'
 
 // Tudo contra mocks: o backend (PR-A) e a flag auth.device-flow-cli podem nao existir ainda.
-const BASE = 'https://adalink-api-gateway.onrender.com'
+const BASE = 'https://adaflow.adalink.ai'
 const T0 = Date.parse('2026-10-06T12:00:00Z')
 const SESSION_TOKEN = 'sess_tok_123'
 
@@ -119,19 +119,21 @@ test('login: pede o codigo, mostra codigo e link, respeita interval e slow_down,
 
   const text = await run($, 'login')
   expect(text).toContain('WDJB-MJHT')
-  expect(text).toContain('https://app.adalink.ai/cli?user_code=WDJB-MJHT')
+  // O servidor devolve app.adalink.ai; o link usa o endereco da plataforma configurado (BASE).
+  expect(text).toContain(`${BASE}/cli?user_code=WDJB-MJHT`)
+  expect(text).not.toContain('app.adalink.ai')
   const code = w.requests.find(r => r.url === `${BASE}/v1/auth/device/code`)!
   expect(code.method).toBe('POST')
   expect(JSON.parse(code.body)).toEqual({ client_id: 'claude-code', scope: 'audit.ingest' })
   // macOS: tenta abrir o navegador (sem esperar por isso)
   await w.clock.settle()
-  expect(w.opened).toContainEqual(['open', 'https://app.adalink.ai/cli?user_code=WDJB-MJHT'])
+  expect(w.opened).toContainEqual(['open', `${BASE}/cli?user_code=WDJB-MJHT`])
 
   // faixa acima do prompt com o link clicavel
   const ui = await $.ui.mount({ plugin: 'adaflow-governance', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false } as never })
   const link = await ui.find({ type: 'Link' })
   expect(link).toBeDefined()
-  expect(JSON.stringify(await ui.drawn())).toContain('"href":"https://app.adalink.ai/cli?user_code=WDJB-MJHT"')
+  expect(JSON.stringify(await ui.drawn())).toContain(`"href":"${BASE}/cli?user_code=WDJB-MJHT"`)
   expect(JSON.stringify(await ui.drawn())).toContain('WDJB-MJHT')
   await ui.unmount()
 
@@ -230,11 +232,78 @@ test('login: flag desligada (404) e rede fora respondem sem travar', async ($, o
   expect(await run($, 'login')).toContain('Nao foi possivel contatar')
 })
 
-test('login: baseUrl http fora de localhost e recusada', { options: { baseUrl: 'http://gateway.example.com' } }, async ($, on) => {
+test('login: baseUrl http fora de localhost e recusada', { options: { baseUrl: 'http://plataforma.example.com' } }, async ($, on) => {
   const w = world(on)
   await start($)
-  expect(await run($, 'login')).toContain('invalida')
+  expect(await run($, 'login')).toContain('invalido')
   expect(w.requests.length).toBe(0)
+})
+
+// Private label: o endereco que a pessoa usa no navegador (cookie de sessao por dominio) e o unico que o mod conhece.
+const ORG = 'https://cora.amcor.com'
+
+test('login <endereco>: login, polling e auditoria no dominio do cliente, sem tocar no canonico', async ($, on) => {
+  const w = world(on)
+  w.reply('POST /v1/auth/device/code', DEVICE_CODE) // o servidor ainda responde com app.adalink.ai
+  w.reply('POST /v1/auth/device/token', { status: 200, body: { access_token: SESSION_TOKEN } })
+  w.reply('GET /v1/auth/get-session', { status: 200, body: { session: { createdAt: new Date(T0).toISOString(), activeOrganizationId: 'org-1' }, user: { email: 'ana@amcor.com' } } })
+  w.reply('GET /v1/auth/token', tokenOk)
+  w.reply('POST /v1/audit/events/batch', { status: 202, body: { accepted: 1, rejected: [] } })
+  await start($)
+
+  const text = await run($, 'login cora.amcor.com') // sem esquema: vira https
+  expect(text).toContain(`${ORG}/cli?user_code=WDJB-MJHT`)
+  expect(text).not.toContain('app.adalink.ai')
+  await w.clock.advance(5_000)
+
+  expect((w.store.session as any).baseUrl).toBe(ORG)
+  expect(w.requests.length).toBeGreaterThan(0)
+  expect(w.requests.every(r => r.url.startsWith(`${ORG}/`))).toBe(true)
+  expect(w.requests.some(r => r.url.startsWith('https://adaflow.adalink.ai'))).toBe(false)
+
+  await $.turn.complete({ answer: 'ok', durationMs: 10, isAborted: false, turnId: 't1', reason: 'answer' })
+  await w.clock.advance(60_000)
+  const audit = w.requests.filter(r => r.url.endsWith('/v1/audit/events/batch'))
+  expect(audit.length).toBeGreaterThan(0)
+  expect(audit.every(r => r.url === `${ORG}/v1/audit/events/batch`)).toBe(true)
+})
+
+test('login <endereco>: o poll usa o endereco do login em andamento, nao o da configuracao', async ($, on) => {
+  const w = world(on)
+  w.reply('POST /v1/auth/device/code', DEVICE_CODE)
+  w.reply('POST /v1/auth/device/token', pending)
+  await start($)
+  await run($, `login ${ORG}`)
+  await w.clock.advance(5_000)
+  const polls = w.requests.filter(r => r.url.endsWith('/device/token'))
+  expect(polls.map(r => r.url)).toEqual([`${ORG}/v1/auth/device/token`])
+})
+
+test('login <endereco>: o servidor nao escolhe o host da pagina de aprovacao (anti-phishing)', async ($, on) => {
+  const w = world(on)
+  w.reply('POST /v1/auth/device/code', {
+    status: 200,
+    body: { ...DEVICE_CODE.body, verification_uri: 'https://evil.example/cli', verification_uri_complete: 'https://evil.example/cli?user_code=WDJB-MJHT' },
+  })
+  await start($)
+  const text = await run($, `login ${ORG}`)
+  expect(text).toContain(`${ORG}/cli?user_code=WDJB-MJHT`)
+  expect(text).not.toContain('evil.example')
+  await w.clock.settle()
+  expect(w.opened.flat().join(' ')).not.toContain('evil.example')
+})
+
+test('login <endereco>: recusa endereco invalido ou inseguro sem fazer requisicao', async ($, on) => {
+  const w = world(on)
+  await start($)
+  for (const bad of ['http://cora.amcor.com', 'ftp://cora.amcor.com', 'https://']) {
+    const text = await run($, `login ${bad}`)
+    expect(text).toContain('Endereco da plataforma invalido')
+  }
+  expect(w.requests.length).toBe(0)
+  // localhost em http continua valido (desenvolvimento)
+  w.reply('POST /v1/auth/device/code', DEVICE_CODE)
+  expect(await run($, 'login http://localhost:3000')).toContain('http://localhost:3000/cli?user_code=WDJB-MJHT')
 })
 
 // ---------- logout / status ----------

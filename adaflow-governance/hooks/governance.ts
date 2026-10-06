@@ -108,6 +108,26 @@ export const normalizeBaseUrl = (raw: string): string | null => {
   return url.origin + url.pathname.replace(/\/+$/, '')
 }
 
+// Endereco digitado em `/adaflow login <endereco>`: aceita `cora.amcor.com` (sem esquema, vira https) ou uma
+// URL completa. Vale so o origin: o login e a API ficam na raiz da plataforma da pessoa.
+export const parseAddress = (raw: string): string | null => {
+  const text = String(raw).trim()
+  if (!text || /\s/.test(text)) return null
+  const base = normalizeBaseUrl(/^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`)
+  return base ? new URL(base).origin : null
+}
+
+// A pagina de aprovacao fica no endereco que a PESSOA escolheu (e onde o cookie de sessao dela vive), nunca
+// no host que o servidor devolve: o servidor so informa o caminho (`/cli?user_code=...`).
+export const onPlatform = (uri: string, base: string): string => {
+  try {
+    const u = new URL(uri, `${base}/`)
+    return `${new URL(base).origin}${u.pathname}${u.search}`
+  } catch {
+    return uri
+  }
+}
+
 const parseJson = (text: string): Record<string, unknown> => {
   try {
     const v = JSON.parse(text)
@@ -181,7 +201,7 @@ const fmtAgo = (now: number, at: number | null): string =>
 
 // ---------- o mod ----------
 
-type Pending = GovernanceLogin & { deviceCode: string; intervalMs: number; timer: { cancel: () => void } | null }
+type Pending = GovernanceLogin & { deviceCode: string; base: string; intervalMs: number; timer: { cancel: () => void } | null }
 
 export class Governance {
   session: StoredSession | null = null
@@ -224,9 +244,12 @@ export class Governance {
 
   // ---------- login (device flow, RFC 8628) ----------
 
-  async login(): Promise<string> {
-    const base = this.baseUrl
-    if (!base) return `URL do gateway invalida: \`${this.cfg.baseUrl}\`. Use https (http so para localhost).`
+  async login(address?: string): Promise<string> {
+    const typed = address?.trim()
+    const base = typed ? parseAddress(typed) : this.baseUrl
+    if (!base) {
+      return `Endereco da plataforma invalido: \`${typed || this.cfg.baseUrl}\`. Use https (http so para localhost), por exemplo \`/adaflow login cora.amcor.com\`.`
+    }
     const now = await this.io.now()
     if (this.session && now < this.session.createdAt + SESSION_CAP_MS) {
       return 'Ja conectado ao Adaflow. Rode `/adaflow status` para ver a sessao ou `/adaflow logout` para sair.'
@@ -248,18 +271,19 @@ export class Governance {
       if (res.status === 404 || res.status === 403) {
         return `O login do CLI ainda nao esta disponivel neste ambiente (HTTP ${res.status}; a flag \`auth.device-flow-cli\` pode estar desligada).`
       }
-      return `O gateway recusou o pedido de login (HTTP ${res.status}).`
+      return `A plataforma recusou o pedido de login (HTTP ${res.status}).`
     }
     const body = parseJson(res.text)
     const deviceCode = str(body.device_code)
     const userCode = str(body.user_code)
     const uri = str(body.verification_uri)
-    if (!deviceCode || !userCode || !uri) return 'Resposta inesperada do gateway ao pedir o codigo de login.'
+    if (!deviceCode || !userCode || !uri) return 'Resposta inesperada da plataforma ao pedir o codigo de login.'
     const login: Pending = {
       deviceCode,
       userCode,
-      verificationUri: absolute(uri, base),
-      verificationUriComplete: str(body.verification_uri_complete) ? absolute(String(body.verification_uri_complete), base) : null,
+      base,
+      verificationUri: onPlatform(uri, base),
+      verificationUriComplete: str(body.verification_uri_complete) ? onPlatform(String(body.verification_uri_complete), base) : null,
       expiresAt: now + (num(body.expires_in) ?? DEFAULT_CODE_TTL_MS / 1000) * 1000,
       intervalMs: Math.max(1, num(body.interval) ?? DEFAULT_INTERVAL_MS / 1000) * 1000,
       timer: null,
@@ -301,8 +325,7 @@ export class Governance {
 
   private async poll(p: Pending) {
     if (this.pending !== p) return
-    const base = this.baseUrl
-    if (!base) return this.cancelLogin('Adaflow: URL do gateway invalida, login cancelado.')
+    const base = p.base // o endereco do login em andamento, nao o da configuracao
     if ((await this.io.now()) >= p.expiresAt) return this.cancelLogin('Adaflow: o codigo de login expirou. Rode /adaflow login de novo.')
     let res: HttpResponse
     try {
@@ -335,7 +358,7 @@ export class Governance {
         return this.cancelLogin('Adaflow: login negado no navegador.')
       default:
         if (res.status >= 500 || res.status === 429) return this.schedulePoll()
-        return this.cancelLogin(`Adaflow: login recusado pelo gateway (HTTP ${res.status}).`)
+        return this.cancelLogin(`Adaflow: login recusado pela plataforma (HTTP ${res.status}).`)
     }
   }
 
@@ -419,7 +442,7 @@ export class Governance {
     } else {
       lines.push(`- Organizacao: ${s.organizationName ?? s.organizationId ?? 'desconhecida'}${s.userEmail ? ` (${s.userEmail})` : ''}`)
       lines.push(`- Validade restante: ${fmtDuration(s.createdAt + SESSION_CAP_MS - now)} (teto de 7 dias desde o login)`)
-      lines.push(`- Gateway: ${s.baseUrl}`)
+      lines.push(`- Plataforma: ${s.baseUrl}`)
     }
     lines.push(`- Ultimo envio: ${fmtAgo(now, this.lastSentAt)}`)
     lines.push(`- Fila pendente: ${this.queue.length} evento(s)`)
@@ -550,14 +573,6 @@ export class Governance {
 }
 
 const bearer = (token: string) => ({ authorization: `Bearer ${token}`, accept: 'application/json' })
-
-const absolute = (uri: string, base: string) => {
-  try {
-    return new URL(uri, base + '/').toString()
-  } catch {
-    return uri
-  }
-}
 
 const publicLogin = (p: Pending): GovernanceLogin => ({
   userCode: p.userCode,
