@@ -1,0 +1,4 @@
+# gerado pelo Claude Code quando o mod carrega (tipos da API e tsconfig)
+**/.claude-plugin/types/
+node_modules/
+.DS_Store

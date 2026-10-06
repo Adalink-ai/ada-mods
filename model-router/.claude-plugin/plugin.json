@@ -1,0 +1,47 @@
+{
+  "name": "model-router",
+  "version": "0.2.0",
+  "description": "Classifica cada prompt via Vercel AI Gateway e roteia o turno para haiku, sonnet ou opus; /router fixa um tier",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "routerModel": {
+      "type": "string",
+      "title": "Modelo classificador",
+      "description": "Modelo de decisao no Vercel AI Gateway que avalia o prompt (provider/modelo)",
+      "default": "typesafe-ai/jev"
+    },
+    "gatewayUrl": {
+      "type": "string",
+      "title": "URL do gateway",
+      "description": "Endpoint de avaliacao (decision API) do gateway",
+      "default": "https://ai-gateway.vercel.sh/v1/evaluate"
+    },
+    "timeoutMs": {
+      "type": "number",
+      "title": "Timeout do classificador (ms)",
+      "description": "Passado esse tempo, o turno segue com o modelo atual",
+      "default": 4000
+    },
+    "haikuModel": {
+      "type": "string",
+      "title": "Modelo do tier haiku",
+      "description": "Id completo usado quando o classificador escolhe haiku",
+      "default": "claude-haiku-4-5-20251001"
+    },
+    "sonnetModel": {
+      "type": "string",
+      "title": "Modelo do tier sonnet",
+      "description": "Id completo usado quando o classificador escolhe sonnet",
+      "default": "claude-sonnet-5-5"
+    },
+    "opusModel": {
+      "type": "string",
+      "title": "Modelo do tier opus",
+      "description": "Id completo usado quando o classificador escolhe opus",
+      "default": "claude-opus-5-5"
+    }
+  },
+  "author": {
+    "name": "Adalink"
+  }
+}

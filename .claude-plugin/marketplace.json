@@ -1,0 +1,14 @@
+{
+  "name": "ada-mods",
+  "owner": {
+    "name": "Adalink"
+  },
+  "description": "Mods do Claude Code mantidos pela Adalink",
+  "plugins": [
+    {
+      "name": "model-router",
+      "source": "./model-router",
+      "description": "Classifica cada prompt via Vercel AI Gateway e roteia o turno para haiku, sonnet ou opus; /router fixa um tier"
+    }
+  ]
+}
