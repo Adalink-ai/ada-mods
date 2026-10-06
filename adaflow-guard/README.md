@@ -26,7 +26,7 @@ A cada tentativa de `Write`, `Edit` ou `Bash` que violasse as regras, o mod inte
 | `literal-token` | há um token hardcoded no código (placeholders e `.env` real ficam de fora) | Write, Edit |
 | `token-print` | um comando imprimiria o token no transcript (`echo $ADAFLOW_APP_TOKEN`, `printenv`, etc.) | Bash |
 
-Se uma violação for detectada, a status line ou um toast mostra o motivo e, em modo `deny` (padrão), a ferramenta é bloqueada. Você pode corrigir e tentar de novo — o mod só valida a edição em si, não o estado anterior do arquivo.
+Em modo `deny` (padrão) a ferramenta é recusada e o motivo, com a correção sugerida, volta para o modelo, que normalmente corrige sozinho. Em modo `warn` a ferramenta roda e um toast avisa. Só conta o que a edição **introduz**: um arquivo que já tinha o problema não trava edições que não o agravam.
 
 ### Configuração
 
@@ -47,9 +47,9 @@ As regras seguem o [guia de integração do Adaflow](https://github.com/Adalink-
 
 ## Limites
 
-- **Bash sofisticado:** um `echo … > arquivo` ou `sed -i` pode contornar as regras de arquivo.
-- **Não é Next App Router-aware:** em SPAs (Vite, Create React App), tudo é client e só a regra de nome público vai pegar.
-- **Falsos positivos:** qualquer string de 16+ caracteres sem "placeholder" nos nomes dispara `literal-token`; use modo `warn` para testar e `deny` para enforcar.
+- **Escrita via Bash:** só `Write` e `Edit` são inspecionados; um `echo … > arquivo` ou `sed -i` contorna as regras de arquivo.
+- **Client component = diretiva `"use client"`** (Next.js App Router). Em SPAs (Vite, Create React App) todo arquivo roda no browser, mas só a regra de prefixo público (`VITE_`, `REACT_APP_`) pega.
+- **Falsos positivos:** `literal-token` dispara com um valor literal de 16+ caracteres em `x-ada-token`, `appToken` ou atribuído a `ADAFLOW_APP_TOKEN`/`ADALINK_APP_TOKEN`/`ADA_TOKEN` (placeholders como `your-…`/`example` são ignorados). Fixtures de teste podem disparar; o modo `warn` serve para isso.
 
 ## Desenvolvimento
 
