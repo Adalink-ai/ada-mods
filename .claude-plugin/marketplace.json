@@ -9,6 +9,11 @@
       "name": "model-router",
       "source": "./model-router",
       "description": "Classifica cada prompt via Vercel AI Gateway e roteia o turno para haiku, sonnet ou opus; /router fixa um tier"
+    },
+    {
+      "name": "adaflow-guard",
+      "source": "./adaflow-guard",
+      "description": "Guardrail para segredos: impede vazar o app token do Adaflow para o browser, codigo-fonte ou transcript"
     }
   ]
 }

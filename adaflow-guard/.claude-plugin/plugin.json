@@ -1,0 +1,15 @@
+{
+  "name": "adaflow-guard",
+  "version": "0.1.0",
+  "description": "Guardrail para apps integrados ao Adaflow: impede vazar o app token (x-ada-token) para o browser, para o codigo-fonte ou para o transcript",
+  "author": { "name": "Adalink" },
+  "userConfig": {
+    "mode": {
+      "type": "string",
+      "title": "Modo",
+      "description": "deny bloqueia a ferramenta e devolve o motivo ao modelo; warn deixa passar e mostra um aviso",
+      "options": ["deny", "warn"],
+      "default": "deny"
+    }
+  }
+}
