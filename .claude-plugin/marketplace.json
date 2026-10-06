@@ -14,6 +14,11 @@
       "name": "adaflow-guard",
       "source": "./adaflow-guard",
       "description": "Guardrail para segredos: impede vazar o app token do Adaflow para o browser, codigo-fonte ou transcript"
+    },
+    {
+      "name": "adaflow-governance",
+      "source": "./adaflow-governance",
+      "description": "Trilha de auditoria do Claude Code no Adaflow: /adaflow login (device flow) e envio em lote so de metadados"
     }
   ]
 }

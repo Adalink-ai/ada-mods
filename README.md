@@ -5,6 +5,8 @@ Mods do [Claude Code](https://claude.com/claude-code) mantidos pela Adalink. Est
 | Mod | O que faz |
 | --- | --- |
 | [`model-router`](./model-router) | Classifica cada prompt e roteia o turno para Haiku, Sonnet ou Opus. `/router` fixa um modelo. |
+| [`adaflow-guard`](./adaflow-guard) | Guardrail que impede vazar o app token do Adaflow para o browser, o código-fonte ou o transcript. |
+| [`adaflow-governance`](./adaflow-governance) | Registra a atividade do Claude Code na trilha de auditoria do Adaflow (só metadados). `/adaflow login` conecta pelo navegador. |
 
 ## Instalar
 
@@ -27,7 +29,7 @@ ada-mods/
 └── model-router/            # um mod = uma pasta
     ├── .claude-plugin/plugin.json   # nome, versão, userConfig
     ├── hooks/               # hooks.json + register.ts
-    ├── types/index.d.ts     # contrato do estado do mod
+    ├── types/index.d.ts     # contrato do estado do mod (quando usa $.state)
     └── tests/               # *.test.ts, rodados por `claude plugin test`
 ```
 
