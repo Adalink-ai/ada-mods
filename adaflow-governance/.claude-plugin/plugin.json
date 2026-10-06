@@ -1,0 +1,21 @@
+{
+  "name": "adaflow-governance",
+  "version": "0.1.0",
+  "description": "Trilha de auditoria do Claude Code no Adaflow: /adaflow login (device flow) e envio em lote so de metadados (sessao, turno, ferramenta negada)",
+  "author": { "name": "Adalink" },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "baseUrl": {
+      "type": "string",
+      "title": "URL do gateway",
+      "description": "Gateway da plataforma Adalink (https; http so para localhost)",
+      "default": "https://adalink-api-gateway.onrender.com"
+    },
+    "enabled": {
+      "type": "boolean",
+      "title": "Enviar auditoria",
+      "description": "Desligado, o mod nao coleta nem envia eventos (os comandos /adaflow continuam disponiveis)",
+      "default": true
+    }
+  }
+}
