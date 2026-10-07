@@ -6,13 +6,31 @@ Requer Claude Code **2.1.291** ou mais recente (versão com Mods / function hook
 
 ## Instalar
 
+### Primeiro uso: adicione o marketplace
+
 No terminal, em uma sessão do Claude Code:
+
+```
+/plugin marketplace add Adalink-ai/ada-mods
+```
+
+### Depois: instale os mods que quiser
+
+```
+/plugin install adaflow-governance@ada-mods
+/plugin install adaflow-guard@ada-mods
+/plugin install model-router@ada-mods
+```
+
+Escolha o escopo **user** para o mod valer em todas as sessões.
+
+**Atalho:** se quiser apenas um mod, dá para pular o `marketplace add`:
 
 ```
 /plugin install adaflow-governance --marketplace Adalink-ai/ada-mods
 ```
 
-Responda `y` em `Add marketplace?` (se for a primeira vez), escolha o escopo (*user* vale para todas as sessões) e mantenha as opções padrão.
+Ele pergunta se pode adicionar o marketplace e depois instala o mod.
 
 ## Login
 
@@ -46,6 +64,28 @@ A sessão vale por no máximo **7 dias** desde o login (teto absoluto, sem renov
 | `/adaflow login [endereço]` | Login por device flow (código + aprovação no navegador). O endereço é opcional e vale para este login; sem ele, usa o `baseUrl` |
 | `/adaflow logout` | Encerra a sessão no servidor (`/sign-out`) e apaga o token e a fila local |
 | `/adaflow status` | Organização, validade restante até o teto de 7 dias, último envio, fila pendente e último erro |
+
+## Atualização
+
+```
+/plugin marketplace update ada-mods
+/plugin update adaflow-governance@ada-mods
+/reload-plugins
+```
+
+Ou instale diretamente no marketplace (substitui a versão anterior):
+
+```
+/plugin install adaflow-governance@ada-mods
+```
+
+## Notas por mod
+
+**adaflow-governance** (este): depois de instalar, rode `/adaflow login <host>`. A sessão vale até 7 dias.
+
+**adaflow-guard**: protege contra vazamento de secrets (app token, chaves privadas). Ativado por padrão.
+
+**model-router**: classifica prompts via Vercel AI Gateway e roteia para haiku, sonnet ou opus. Requer `AI_GATEWAY_API_KEY` no env; sem ela, o turno segue com o modelo atual.
 
 ## Configuração
 
